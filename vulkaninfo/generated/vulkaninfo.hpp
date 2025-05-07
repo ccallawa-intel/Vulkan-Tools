@@ -2850,6 +2850,11 @@ void DumpVkOffset2D(Printer &p, std::string name, const VkOffset2D &obj) {
     p.PrintKeyValue("x", obj.x);
     p.PrintKeyValue("y", obj.y);
 }
+void DumpVkPhysicalDeviceMemoryDecompressionFeaturesNV(Printer &p, std::string name, const VkPhysicalDeviceMemoryDecompressionFeaturesNV &obj) {
+    ObjectWrapper object{p, name};
+    p.SetMinKeyWidth(34);
+    p.PrintKeyBool("memoryDecompression", static_cast<bool>(obj.memoryDecompression));
+}
 void DumpVkPhysicalDevice16BitStorageFeatures(Printer &p, std::string name, const VkPhysicalDevice16BitStorageFeatures &obj) {
     ObjectWrapper object{p, name};
     p.SetMinKeyWidth(34);
@@ -2896,6 +2901,35 @@ void DumpVkPhysicalDeviceAccelerationStructurePropertiesKHR(Printer &p, std::str
     p.PrintKeyValue("maxDescriptorSetAccelerationStructures", obj.maxDescriptorSetAccelerationStructures);
     p.PrintKeyValue("maxDescriptorSetUpdateAfterBindAccelerationStructures", obj.maxDescriptorSetUpdateAfterBindAccelerationStructures);
     p.PrintKeyValue("minAccelerationStructureScratchOffsetAlignment", obj.minAccelerationStructureScratchOffsetAlignment);
+}
+std::vector<const char *> VkMemoryDecompressionMethodFlagsNVGetStrings(VkMemoryDecompressionMethodFlagsNV value) {
+    std::vector<const char *> strings;
+    if (value == 0) { strings.push_back("None"); return strings; }
+    if (VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV & value) strings.push_back("VK_MEMORY_DECOMPRESSION_METHOD_GDEFLATE_1_0_BIT_NV ");
+    return strings;
+}
+void DumpVkMemoryDecompressionMethodFlagsNV(Printer &p, std::string name, VkMemoryDecompressionMethodFlagsNV value) {
+    if (static_cast<VkMemoryDecompressionMethodFlagsNV>(value) == 0) {
+        ArrayWrapper arr(p, name, 0);
+        if (p.Type() != OutputType::json && p.Type() != OutputType::vkconfig_output)
+            p.SetAsType().PrintString("None");
+        return;
+    }
+    auto strings = VkMemoryDecompressionMethodFlagsNVGetStrings(static_cast<VkMemoryDecompressionMethodFlagsNV>(value));
+    ArrayWrapper arr(p, name, strings.size());
+    for(auto& str : strings){
+        if (p.Type() == OutputType::json)
+            p.SetAsType().PrintString(std::string("VK_") + str);
+        else
+            p.SetAsType().PrintString(str);
+    }
+}
+void DumpVkPhysicalDeviceMemoryDecompressionPropertiesNV(Printer &p, std::string name, const VkPhysicalDeviceMemoryDecompressionPropertiesNV &obj) {
+    ObjectWrapper object{p, name};
+    p.SetMinKeyWidth(58);
+
+    DumpVkMemoryDecompressionMethodFlagsNV(p, "decompressionMethods", obj.decompressionMethods);
+    p.PrintKeyValue("maxDecompressionIndirectCount", obj.maxDecompressionIndirectCount);
 }
 void DumpVkPhysicalDeviceAddressBindingReportFeaturesEXT(Printer &p, std::string name, const VkPhysicalDeviceAddressBindingReportFeaturesEXT &obj) {
     ObjectWrapper object{p, name};
@@ -5234,6 +5268,7 @@ struct phys_device_props2_chain {
     VkPhysicalDeviceVulkan12Properties PhysicalDeviceVulkan12Properties{};
     VkPhysicalDeviceVulkan13Properties PhysicalDeviceVulkan13Properties{};
     VkPhysicalDeviceVulkan14Properties PhysicalDeviceVulkan14Properties{};
+    VkPhysicalDeviceMemoryDecompressionPropertiesNV PhysicalDeviceMemoryDecompressionPropertiesNV{};
     std::vector<VkImageLayout> VkPhysicalDeviceVulkan14Properties_pCopySrcLayouts;
     std::vector<VkImageLayout> VkPhysicalDeviceVulkan14Properties_pCopyDstLayouts;
     void initialize_chain(AppInstance &inst, AppGpu &gpu , bool show_promoted_structs) noexcept {
@@ -5307,6 +5342,7 @@ struct phys_device_props2_chain {
         PhysicalDeviceVulkan12Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
         PhysicalDeviceVulkan13Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
         PhysicalDeviceVulkan14Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
+        PhysicalDeviceMemoryDecompressionPropertiesNV.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV;
         std::vector<VkBaseOutStructure*> chain_members{};
         if (gpu.CheckPhysicalDeviceExtensionIncluded(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME))
             chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceAccelerationStructurePropertiesKHR));
@@ -5463,6 +5499,8 @@ struct phys_device_props2_chain {
         if ((gpu.CheckPhysicalDeviceExtensionIncluded(VK_KHR_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME))
             && (gpu.api_version < VK_API_VERSION_1_4 || show_promoted_structs))
             chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceVertexAttributeDivisorProperties));
+        if (gpu.CheckPhysicalDeviceExtensionIncluded(VK_NV_MEMORY_DECOMPRESSION_EXTENSION_NAME))
+            chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceMemoryDecompressionPropertiesNV));
         if (gpu.CheckPhysicalDeviceExtensionIncluded(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME))
             chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceVertexAttributeDivisorPropertiesEXT));
         if ((gpu.api_version >= VK_API_VERSION_1_2))
@@ -5492,6 +5530,11 @@ void chain_iterator_phys_device_props2(Printer &p, AppInstance &inst, AppGpu &gp
     while (place) {
         const VkBaseOutStructure *structure = (const VkBaseOutStructure *)place;
         p.SetSubHeader();
+        if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV) {
+            const VkPhysicalDeviceMemoryDecompressionPropertiesNV* props = (const VkPhysicalDeviceMemoryDecompressionPropertiesNV*)structure;
+            DumpVkPhysicalDeviceMemoryDecompressionPropertiesNV(p, "VkPhysicalDeviceMemoryDecompressionPropertiesNV", *props);
+            p.AddNewline();
+        }
         if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR) {
             const VkPhysicalDeviceAccelerationStructurePropertiesKHR* props = (const VkPhysicalDeviceAccelerationStructurePropertiesKHR*)structure;
             DumpVkPhysicalDeviceAccelerationStructurePropertiesKHR(p, "VkPhysicalDeviceAccelerationStructurePropertiesKHR", *props);
@@ -6042,6 +6085,7 @@ struct phys_device_features2_chain {
     VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT PhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT{};
     VkPhysicalDeviceYcbcrImageArraysFeaturesEXT PhysicalDeviceYcbcrImageArraysFeaturesEXT{};
     VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures{};
+    VkPhysicalDeviceMemoryDecompressionFeaturesNV PhysicalDeviceMemoryDecompressionFeaturesNV{};
     void initialize_chain(AppGpu &gpu , bool show_promoted_structs) noexcept {
         PhysicalDevice16BitStorageFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
         PhysicalDevice4444FormatsFeaturesEXT.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -6193,6 +6237,7 @@ struct phys_device_features2_chain {
         PhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT;
         PhysicalDeviceYcbcrImageArraysFeaturesEXT.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT;
         PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES;
+        PhysicalDeviceMemoryDecompressionFeaturesNV.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV;
         std::vector<VkBaseOutStructure*> chain_members{};
         if ((gpu.CheckPhysicalDeviceExtensionIncluded(VK_KHR_16BIT_STORAGE_EXTENSION_NAME))
             && (gpu.api_version < VK_API_VERSION_1_1 || show_promoted_structs))
@@ -6546,6 +6591,8 @@ struct phys_device_features2_chain {
         if ((gpu.CheckPhysicalDeviceExtensionIncluded(VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME))
             && (gpu.api_version < VK_API_VERSION_1_3 || show_promoted_structs))
             chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures));
+        if ((gpu.CheckPhysicalDeviceExtensionIncluded(VK_NV_MEMORY_DECOMPRESSION_EXTENSION_NAME)))
+            chain_members.push_back(reinterpret_cast<VkBaseOutStructure*>(&PhysicalDeviceMemoryDecompressionFeaturesNV));
 
         if (!chain_members.empty()) {
             for(size_t i = 0; i < chain_members.size() - 1; i++){
@@ -6565,6 +6612,11 @@ void chain_iterator_phys_device_features2(Printer &p, AppGpu &gpu, bool show_pro
     while (place) {
         const VkBaseOutStructure *structure = (const VkBaseOutStructure *)place;
         p.SetSubHeader();
+        if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV) {
+            const VkPhysicalDeviceMemoryDecompressionFeaturesNV* props = (const VkPhysicalDeviceMemoryDecompressionFeaturesNV*)structure;
+            DumpVkPhysicalDeviceMemoryDecompressionFeaturesNV(p, "VkPhysicalDeviceMemoryDecompressionFeaturesNV", *props);
+            p.AddNewline();
+        }
         if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES) {
             const VkPhysicalDevice16BitStorageFeatures* props = (const VkPhysicalDevice16BitStorageFeatures*)structure;
             DumpVkPhysicalDevice16BitStorageFeatures(p, gpu.api_version >= VK_API_VERSION_1_1 ?"VkPhysicalDevice16BitStorageFeatures":"VkPhysicalDevice16BitStorageFeaturesKHR", *props);
